@@ -109,4 +109,4 @@ python -m pytest tests/
 
 ## Author
 
-[Your Name](https://github.com/your-username)
+[Alexandr Krylov](https://github.com/mraksdev)
