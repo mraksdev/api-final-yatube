@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 
@@ -62,14 +61,14 @@ class FollowSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        fields = '__all__'
+        fields = ('user', 'following')
         model = Follow
 
-    def validate_following(self, value: User) -> User:
+    def validate_following(self, following_user: UserModel) -> UserModel:
         """Prevent users from subscribing to themselves.
 
         Args:
-            value: User instance being followed.
+            following_user: User instance being followed.
 
         Returns:
             The same User instance if validation passes.
@@ -78,8 +77,35 @@ class FollowSerializer(serializers.ModelSerializer):
             ValidationError: If the user tries to follow themselves.
         """
         request = self.context.get('request')
-        if request and value == request.user:
+        if request and following_user == request.user:
             raise serializers.ValidationError(
                 'Нельзя подписаться на самого себя'
             )
-        return value
+        return following_user
+
+    def validate(self, attrs):
+        """Check for duplicate follow before saving.
+
+        Args:
+            attrs: Dictionary of validated field values.
+
+        Returns:
+            Validated attrs if no duplicate exists.
+
+        Raises:
+            ValidationError: If a follow from this user
+            to this target already exists.
+        """
+        request = self.context.get('request')
+        following_user = attrs.get('following')
+        if (
+            request
+            and following_user
+            and request.user.subscriptions.filter(
+                following=following_user
+            ).exists()
+        ):
+            raise serializers.ValidationError(
+                'Вы уже подписаны на этого пользователя'
+            )
+        return attrs

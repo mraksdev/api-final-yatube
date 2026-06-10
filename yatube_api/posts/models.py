@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import F, Q
 
 User = get_user_model()
 
@@ -77,14 +78,14 @@ class Follow(models.Model):
 
     A follow creates a one-directional subscription where `user`
     follows `following`. A unique constraint prevents duplicate
-    follows and the API layer prevents self-follows.
+    follows and a check constraint prevents self-follows.
     """
 
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='follower',
+        User, on_delete=models.CASCADE, related_name='subscriptions',
         verbose_name='Подписчик')
     following = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='following',
+        User, on_delete=models.CASCADE, related_name='subscribers',
         verbose_name='Автор')
 
     class Meta:
@@ -94,5 +95,9 @@ class Follow(models.Model):
             models.UniqueConstraint(
                 fields=('user', 'following'),
                 name='unique_user_following'
-            )
+            ),
+            models.CheckConstraint(
+                check=~Q(user=F('following')),
+                name='prevent_self_follow'
+            ),
         ]

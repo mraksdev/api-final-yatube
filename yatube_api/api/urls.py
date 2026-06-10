@@ -11,21 +11,12 @@ router_v1.register('posts', PostViewSet)
 router_v1.register('groups', GroupViewSet)
 router_v1.register('follow', FollowViewSet)
 
+comments_router = DefaultRouter()
+comments_router.register('comments', CommentViewSet, basename='comment')
+
 v1_patterns = [
     path('', include(router_v1.urls)),
-    path(
-        'posts/<int:post_id>/comments/',
-        CommentViewSet.as_view({'get': 'list', 'post': 'create'})
-    ),
-    path(
-        'posts/<int:post_id>/comments/<int:pk>/',
-        CommentViewSet.as_view({
-            'get': 'retrieve',
-            'put': 'update',
-            'patch': 'partial_update',
-            'delete': 'destroy',
-        })
-    ),
+    path('posts/<int:post_id>/', include(comments_router.urls)),
     path('jwt/create/', TokenObtainPairView.as_view(),
          name='token_obtain_pair'),
     path('jwt/refresh/', TokenRefreshView.as_view(),

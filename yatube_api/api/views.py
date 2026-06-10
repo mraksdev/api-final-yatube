@@ -1,11 +1,9 @@
-from django.db import IntegrityError
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, mixins, permissions, viewsets
-from rest_framework.exceptions import ValidationError
 from rest_framework.serializers import BaseSerializer
 
-from api.permissions import IsAuthorOrReadOnly
+from api.permissions import IsAuthenticatedAuthorOrReadOnly
 from api.serializers import (
     CommentSerializer, FollowSerializer, GroupSerializer, PostSerializer,
 )
@@ -15,13 +13,11 @@ from posts.models import Follow, Group, Post, Comment
 class BaseAuthorViewSet(viewsets.ModelViewSet):
     """Base viewset for models with an author field.
 
-    Provides IsAuthenticatedOrReadOnly + IsAuthorOrReadOnly permissions
+    Provides IsAuthenticatedAuthorOrReadOnly (auth + author-only write)
     and sets the author to the current user on creation.
     """
 
-    permission_classes = [
-        permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly,
-    ]
+    permission_classes = (IsAuthenticatedAuthorOrReadOnly,)
 
     def perform_create(self, serializer: BaseSerializer) -> None:
         """Set the author to the current authenticated user.
@@ -100,9 +96,9 @@ class FollowViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
 
     queryset = Follow.objects.all()
     serializer_class = FollowSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = (permissions.IsAuthenticated,)
     pagination_class = None
-    filter_backends = [filters.SearchFilter]
+    filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username',)
 
     def get_queryset(self) -> QuerySet[Follow]:
@@ -111,20 +107,12 @@ class FollowViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
         Returns:
             QuerySet of Follow objects where user is the requester.
         """
-        return Follow.objects.filter(user=self.request.user)
+        return self.request.user.subscriptions.all()
 
     def perform_create(self, serializer: BaseSerializer) -> None:
         """Create a follow for the current user.
 
-        Handles duplicate follow attempts by catching IntegrityError.
-
         Args:
             serializer: Validated serializer instance.
-
-        Raises:
-            ValidationError: If the follow already exists.
         """
-        try:
-            serializer.save(user=self.request.user)
-        except IntegrityError:
-            raise ValidationError('Вы уже подписаны на этого пользователя')
+        serializer.save(user=self.request.user)

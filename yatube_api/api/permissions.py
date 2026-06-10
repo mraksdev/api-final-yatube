@@ -4,12 +4,13 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 
 
-class IsAuthorOrReadOnly(permissions.BasePermission):
-    """Custom permission: full access for author, read-only for others.
+class IsAuthenticatedAuthorOrReadOnly(permissions.IsAuthenticatedOrReadOnly):
+    """Combined permission: auth check + author-only write.
 
-    Safe methods (GET, HEAD, OPTIONS) are always allowed.
-    Write/delete methods are only allowed if the requesting user
-    is the author of the object.
+    Inherits IsAuthenticatedOrReadOnly for has_permission:
+    anonymous requests get read-only access.
+    On top of that, has_object_permission restricts write/delete
+    to the object's author.
     """
 
     def has_object_permission(
@@ -18,17 +19,11 @@ class IsAuthorOrReadOnly(permissions.BasePermission):
         view: APIView,
         instance: Model,
     ) -> bool:
-        """Check if user can modify the object.
+        """Allow write/delete only for the object author.
 
-        Args:
-            request: The incoming HTTP request.
-            view: The view handling the request.
-            instance: The model instance being accessed.
-
-        Returns:
-            True if the method is safe or the user is the author,
-            False otherwise.
+        Safe methods are already permitted by the parent class.
         """
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return instance.author == request.user
+        return (
+            request.method in permissions.SAFE_METHODS
+            or instance.author == request.user
+        )
