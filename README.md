@@ -106,3 +106,7 @@ curl -X POST http://localhost:8000/api/v1/follow/ \
 ```bash
 python -m pytest tests/
 ```
+
+## Author
+
+[Your Name](https://github.com/your-username)
