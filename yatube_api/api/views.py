@@ -57,8 +57,9 @@ class CommentViewSet(BaseAuthorViewSet):
         Raises:
             Http404: If the post does not exist.
         """
-        post = get_object_or_404(Post, id=self.kwargs.get('post_id'))
-        return post.comments.all()
+        return get_object_or_404(
+            Post, id=self.kwargs.get('post_id')
+        ).comments.all()
 
     def perform_create(self, serializer: BaseSerializer) -> None:
         """Create a comment linked to the post from the URL.

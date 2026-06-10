@@ -65,7 +65,7 @@ class FollowSerializer(serializers.ModelSerializer):
         model = Follow
 
     def validate_following(self, following_user: UserModel) -> UserModel:
-        """Prevent users from subscribing to themselves.
+        """Validate following field: no self-follow, no duplicates.
 
         Args:
             following_user: User instance being followed.
@@ -74,38 +74,18 @@ class FollowSerializer(serializers.ModelSerializer):
             The same User instance if validation passes.
 
         Raises:
-            ValidationError: If the user tries to follow themselves.
+            ValidationError: If trying to follow self or a duplicate.
         """
         request = self.context.get('request')
-        if request and following_user == request.user:
-            raise serializers.ValidationError(
-                'Нельзя подписаться на самого себя'
-            )
-        return following_user
-
-    def validate(self, attrs):
-        """Check for duplicate follow before saving.
-
-        Args:
-            attrs: Dictionary of validated field values.
-
-        Returns:
-            Validated attrs if no duplicate exists.
-
-        Raises:
-            ValidationError: If a follow from this user
-            to this target already exists.
-        """
-        request = self.context.get('request')
-        following_user = attrs.get('following')
-        if (
-            request
-            and following_user
-            and request.user.subscriptions.filter(
+        if request:
+            if following_user == request.user:
+                raise serializers.ValidationError(
+                    'Нельзя подписаться на самого себя'
+                )
+            if request.user.subscriptions.filter(
                 following=following_user
-            ).exists()
-        ):
-            raise serializers.ValidationError(
-                'Вы уже подписаны на этого пользователя'
-            )
-        return attrs
+            ).exists():
+                raise serializers.ValidationError(
+                    'Вы уже подписаны на этого пользователя'
+                )
+        return following_user
